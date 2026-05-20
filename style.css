@@ -3,27 +3,36 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    cursor: none !important; /* Forces custom cursor globally */
+    cursor: none !important; 
 }
 
 :root {
     --bg-color: #030712;
-    --bg-darker: #02040a;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --accent: #00f0ff;
     --accent-secondary: #7000ff;
-    --card-bg: rgba(255, 255, 255, 0.03);
+    --card-bg: rgba(255, 255, 255, 0.04);
     --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
-    background-color: var(--bg-color);
+    background-color: transparent; /* Let Three.js canvas show through */
     color: var(--text-main);
     font-family: 'Poppins', sans-serif;
     line-height: 1.6;
     overflow-x: hidden;
-    position: relative;
+}
+
+/* 3D Background Canvas */
+#bg-3d {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none; /* Prevents canvas from blocking clicks on UI */
 }
 
 h1, h2, h3, .logo {
@@ -57,12 +66,12 @@ h1, h2, h3, .logo {
     transition: width 0.3s, height 0.3s, background 0.3s, border-color 0.3s;
 }
 
-/* Interactive Background Glow */
+/* Interactive Ambient Glow for UI Layer */
 .mouse-glow {
     position: fixed;
     width: 800px;
     height: 800px;
-    background: radial-gradient(circle, rgba(112, 0, 255, 0.15) 0%, rgba(0, 240, 255, 0.05) 40%, rgba(0,0,0,0) 70%);
+    background: radial-gradient(circle, rgba(112, 0, 255, 0.1) 0%, rgba(0, 240, 255, 0.03) 40%, rgba(0,0,0,0) 70%);
     border-radius: 50%;
     pointer-events: none;
     top: -400px;
@@ -77,7 +86,7 @@ nav {
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem 5%;
-    background: rgba(3, 7, 18, 0.5);
+    background: rgba(3, 7, 18, 0.3);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--glass-border);
@@ -85,7 +94,6 @@ nav {
     width: 100%;
     top: 0;
     z-index: 1000;
-    transition: all 0.3s ease;
 }
 
 .logo {
@@ -147,15 +155,6 @@ header {
     padding: 0 5%;
 }
 
-#particles-js {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
-
 .hero-content {
     position: relative;
     z-index: 2;
@@ -205,7 +204,7 @@ header {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     border-radius: 50%;
     backdrop-filter: blur(5px);
@@ -224,7 +223,7 @@ header {
 .btn {
     display: inline-block;
     padding: 15px 40px;
-    background: transparent;
+    background: rgba(255,255,255,0.05);
     color: #fff;
     text-decoration: none;
     border-radius: 30px;
@@ -232,35 +231,16 @@ header {
     font-family: 'Space Grotesk', sans-serif;
     letter-spacing: 1px;
     border: 1px solid var(--accent);
+    backdrop-filter: blur(5px);
     position: relative;
     overflow: hidden;
     transition: all 0.3s;
 }
 
-.btn span {
-    position: relative;
-    z-index: 2;
-}
-
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    transition: all 0.5s;
-    z-index: 1;
-}
-
-.btn:hover::before {
-    left: 100%;
-}
-
 .btn:hover {
     box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
-    background: rgba(0, 240, 255, 0.1);
+    background: rgba(0, 240, 255, 0.15);
+    transform: scale(1.05);
 }
 
 /* Scroll Indicator */
@@ -326,10 +306,6 @@ header {
     color: var(--accent);
 }
 
-.bg-dark {
-    background-color: var(--bg-darker);
-}
-
 /* Glassmorphism Classes */
 .glass-panel, .glass-card {
     background: var(--card-bg);
@@ -337,7 +313,7 @@ header {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
 }
 
 /* About Section */
@@ -359,7 +335,7 @@ header {
 
 .education {
     text-align: left;
-    background: rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.3);
     padding: 2.5rem;
     border-radius: 15px;
     border: 1px solid rgba(255,255,255,0.02);
@@ -389,7 +365,7 @@ header {
     width: 13px;
     height: 13px;
     border-radius: 50%;
-    background: var(--bg-darker);
+    background: var(--bg-color);
     border: 2px solid var(--accent);
 }
 
@@ -422,7 +398,6 @@ header {
     padding: 2.5rem;
     text-align: center;
     position: relative;
-    overflow: hidden;
     transform-style: preserve-3d;
 }
 
@@ -433,7 +408,7 @@ header {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    transform: translateZ(20px); /* 3D effect layer */
+    transform: translateZ(20px);
 }
 
 .skill-tags {
@@ -441,11 +416,11 @@ header {
     flex-wrap: wrap;
     gap: 12px;
     justify-content: center;
-    transform: translateZ(30px); /* 3D effect layer */
+    transform: translateZ(30px);
 }
 
 .skill-tags span {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.05);
     color: var(--text-main);
     padding: 10px 20px;
     border-radius: 8px;
@@ -457,7 +432,7 @@ header {
 .skill-tags span:hover {
     border-color: var(--accent);
     color: var(--accent);
-    background: rgba(0, 240, 255, 0.05);
+    background: rgba(0, 240, 255, 0.1);
     box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
 }
 
@@ -474,7 +449,6 @@ header {
     padding: 2.5rem;
     position: relative;
     transform-style: preserve-3d;
-    cursor: none;
 }
 
 .project-icon {
@@ -505,8 +479,8 @@ footer {
 }
 
 .footer-glass {
-    background: linear-gradient(to top, rgba(3, 7, 18, 0.95), rgba(3, 7, 18, 0.8));
-    backdrop-filter: blur(20px);
+    background: linear-gradient(to top, rgba(3, 7, 18, 0.95), rgba(3, 7, 18, 0.3));
+    backdrop-filter: blur(10px);
     border-top: 1px solid var(--glass-border);
     padding: 6rem 5% 3rem;
     text-align: center;
@@ -534,7 +508,7 @@ footer {
     align-items: center;
     gap: 10px;
     padding: 15px 30px;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.05);
     border: 1px solid var(--glass-border);
     border-radius: 30px;
     color: var(--text-main);
@@ -547,16 +521,16 @@ footer {
 }
 
 .contact-btn:hover {
-    background: rgba(0, 240, 255, 0.05);
+    background: rgba(0, 240, 255, 0.1);
     border-color: var(--accent);
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
 }
 
 .footer-line {
     width: 100%;
     max-width: 600px;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
     margin: 3rem auto;
 }
 
@@ -568,7 +542,7 @@ footer {
 /* Responsive */
 @media (max-width: 768px) {
     .cursor, .cursor-follower, .mouse-glow {
-        display: none; /* Disable custom cursor on mobile */
+        display: none; 
     }
     * {
         cursor: auto !important;

@@ -1,66 +1,174 @@
-// Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
 
-    // 1. Custom Interactive Cursor & Background Glow
+    /* ========================================================
+       1. THREE.JS 3D BACKGROUND LOGIC (Scroll-Reactive)
+       ======================================================== */
+    const canvas = document.querySelector('#bg-3d');
+    
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x030712, 0.02); // Deep dark blue fog to hide the background edges
+
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = 10;
+    camera.position.y = 0;
+
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Create 3D Blocks Array
+    const blocks = [];
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    
+    // Material 1: Dark metallic
+    const materialSolid = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.2,
+        metalness: 0.8,
+    });
+    
+    // Material 2: Glowing cyan wireframe
+    const materialWire = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.3
+    });
+
+    // Generate Blocks spread out in a massive 3D tunnel volume
+    for(let i = 0; i < 250; i++) {
+        // Mix of solid and wireframe blocks
+        const useWireframe = Math.random() > 0.8;
+        const mesh = new THREE.Mesh(geometry, useWireframe ? materialWire : materialSolid);
+        
+        // Spread them wide and deep (X, Y, Z)
+        mesh.position.set(
+            (Math.random() - 0.5) * 40,      // X spread
+            (Math.random() - 0.5) * 60 - 10, // Y spread (tilted downwards)
+            (Math.random() - 0.5) * 60 - 10  // Z spread (depth)
+        );
+        
+        // Random rotations and scales
+        mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        const scale = Math.random() * 2 + 0.5;
+        mesh.scale.set(scale, scale, scale);
+        
+        scene.add(mesh);
+        blocks.push({
+            mesh: mesh,
+            rotSpeedX: (Math.random() - 0.5) * 0.01,
+            rotSpeedY: (Math.random() - 0.5) * 0.01,
+        });
+    }
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambientLight);
+
+    const pointLight1 = new THREE.PointLight(0x00f0ff, 3, 50); // Cyan
+    pointLight1.position.set(5, 5, 5);
+    scene.add(pointLight1);
+
+    const pointLight2 = new THREE.PointLight(0x7000ff, 3, 50); // Purple
+    pointLight2.position.set(-5, -5, -5);
+    scene.add(pointLight2);
+
+    // Mouse Tracking for Parallax
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetX = 0;
+    let targetY = 0;
+    const windowHalfX = window.innerWidth / 2;
+    const windowHalfY = window.innerHeight / 2;
+
+    document.addEventListener('mousemove', (event) => {
+        mouseX = (event.clientX - windowHalfX);
+        mouseY = (event.clientY - windowHalfY);
+    });
+
+    // Scroll Tracking
+    let scrollY = window.scrollY;
+    window.addEventListener('scroll', () => {
+        scrollY = window.scrollY;
+    });
+
+    // Resize Handler
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Animation Loop for 3D Scene
+    const clock = new THREE.Clock();
+
+    function animate3D() {
+        const elapsedTime = clock.getElapsedTime();
+
+        // Rotate individual blocks slowly
+        blocks.forEach((block) => {
+            block.mesh.rotation.x += block.rotSpeedX;
+            block.mesh.rotation.y += block.rotSpeedY;
+        });
+
+        // 1. Move camera based on SCROLL (Fly through space)
+        // Adjust the multiplier (0.01) to make the fly-through faster or slower
+        camera.position.z = 10 - (scrollY * 0.015);
+        camera.position.y = -(scrollY * 0.005);
+
+        // 2. Add subtle Mouse Parallax to the camera
+        targetX = mouseX * 0.002;
+        targetY = mouseY * 0.002;
+        camera.rotation.y += 0.05 * (targetX - camera.rotation.y);
+        camera.rotation.x += 0.05 * (targetY - camera.rotation.x);
+
+        // Move lights around dynamically
+        pointLight1.position.x = Math.sin(elapsedTime * 0.5) * 10;
+        pointLight1.position.z = Math.cos(elapsedTime * 0.5) * 10;
+        
+        pointLight2.position.x = Math.cos(elapsedTime * 0.3) * 15;
+        pointLight2.position.y = Math.sin(elapsedTime * 0.3) * 10;
+
+        renderer.render(scene, camera);
+        window.requestAnimationFrame(animate3D);
+    }
+    animate3D();
+
+
+    /* ========================================================
+       2. CUSTOM CURSOR & UI LOGIC
+       ======================================================== */
     const cursor = document.querySelector('.cursor');
     const follower = document.querySelector('.cursor-follower');
     const glow = document.querySelector('.mouse-glow');
     
-    // Set initial positions off-screen to avoid jumping
     gsap.set(cursor, { x: -100, y: -100 });
     gsap.set(follower, { x: -100, y: -100 });
 
     document.addEventListener('mousemove', (e) => {
-        // Move the tiny dot instantly
-        gsap.to(cursor, { 
-            x: e.clientX - 4, 
-            y: e.clientY - 4, 
-            duration: 0.1, 
-            ease: "power2.out" 
-        });
-        
-        // Move the follower ring with a slight delay
-        gsap.to(follower, { 
-            x: e.clientX - 20, 
-            y: e.clientY - 20, 
-            duration: 0.5, 
-            ease: "power3.out" 
-        });
-
-        // Move the massive background ambient glow behind the site
-        gsap.to(glow, {
-            x: e.clientX,
-            y: e.clientY,
-            duration: 1.5,
-            ease: "power2.out"
-        });
+        gsap.to(cursor, { x: e.clientX - 4, y: e.clientY - 4, duration: 0.1, ease: "power2.out" });
+        gsap.to(follower, { x: e.clientX - 20, y: e.clientY - 20, duration: 0.5, ease: "power3.out" });
+        gsap.to(glow, { x: e.clientX, y: e.clientY, duration: 1.5, ease: "power2.out" });
     });
 
-    // Cursor hover effects on links and buttons
     const hoverElements = document.querySelectorAll('a, .btn, .skill-tags span, .project-card');
     hoverElements.forEach(el => {
         el.addEventListener('mouseenter', () => {
-            gsap.to(follower, { 
-                scale: 1.8, 
-                backgroundColor: 'rgba(0, 240, 255, 0.1)', 
-                borderColor: 'rgba(0, 240, 255, 0.8)',
-                duration: 0.3 
-            });
+            gsap.to(follower, { scale: 1.8, backgroundColor: 'rgba(0, 240, 255, 0.1)', borderColor: 'rgba(0, 240, 255, 0.8)', duration: 0.3 });
             gsap.to(cursor, { scale: 0, duration: 0.3 });
         });
-        
         el.addEventListener('mouseleave', () => {
-            gsap.to(follower, { 
-                scale: 1, 
-                backgroundColor: 'transparent', 
-                borderColor: 'rgba(0, 240, 255, 0.5)',
-                duration: 0.3 
-            });
+            gsap.to(follower, { scale: 1, backgroundColor: 'transparent', borderColor: 'rgba(0, 240, 255, 0.5)', duration: 0.3 });
             gsap.to(cursor, { scale: 1, duration: 0.3 });
         });
     });
 
-    // 2. Magnetic Button Effect
+    /* ========================================================
+       3. MAGNETIC BUTTONS EFFECT
+       ======================================================== */
     const magneticElements = document.querySelectorAll('.magnetic');
     magneticElements.forEach(elem => {
         elem.addEventListener('mousemove', (e) => {
@@ -69,94 +177,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const x = e.clientX - rect.left - rect.width / 2;
             const y = e.clientY - rect.top - rect.height / 2;
             
-            gsap.to(elem, {
-                x: x / rect.width * strength,
-                y: y / rect.height * strength,
-                duration: 1,
-                ease: "power3.out"
-            });
+            gsap.to(elem, { x: x / rect.width * strength, y: y / rect.height * strength, duration: 1, ease: "power3.out" });
         });
 
         elem.addEventListener('mouseleave', () => {
-            gsap.to(elem, {
-                x: 0,
-                y: 0,
-                duration: 1,
-                ease: "elastic.out(1, 0.3)"
-            });
+            gsap.to(elem, { x: 0, y: 0, duration: 1, ease: "elastic.out(1, 0.3)" });
         });
     });
 
 
-    // 3. Typed.js Initialization
+    /* ========================================================
+       4. TYPED.JS
+       ======================================================== */
     new Typed('.typed-text', {
-        strings: [
-            'Full-Stack Web Developer', 
-            'MERN Stack Specialist', 
-            'Problem Solver'
-        ],
+        strings: ['Full-Stack Web Developer', 'MERN Stack Specialist', 'Problem Solver'],
         typeSpeed: 50,
         backSpeed: 30,
         backDelay: 2000,
         loop: true,
-        showCursor: false // using custom css cursor instead
+        showCursor: false 
     });
 
 
-    // 4. Advanced Particles.js (Reactive to Cursor Movement)
-    particlesJS("particles-js", {
-        "particles": {
-            "number": { "value": 70, "density": { "enable": true, "value_area": 900 } },
-            "color": { "value": ["#00f0ff", "#7000ff"] },
-            "shape": { "type": "circle" },
-            "opacity": { 
-                "value": 0.6, 
-                "random": true,
-                "anim": { "enable": true, "speed": 1, "opacity_min": 0.1, "sync": false }
-            },
-            "size": { 
-                "value": 4, 
-                "random": true,
-                "anim": { "enable": true, "speed": 2, "size_min": 0.1, "sync": false }
-            },
-            "line_linked": {
-                "enable": true,
-                "distance": 150,
-                "color": "#00f0ff",
-                "opacity": 0.2,
-                "width": 1
-            },
-            "move": {
-                "enable": true,
-                "speed": 1.5,
-                "direction": "none",
-                "random": true,
-                "straight": false,
-                "out_mode": "out",
-                "bounce": false,
-                "attract": { "enable": true, "rotateX": 600, "rotateY": 1200 }
-            }
-        },
-        "interactivity": {
-            "detect_on": "window",
-            "events": {
-                "onhover": { "enable": true, "mode": "grab" },
-                "onclick": { "enable": true, "mode": "push" },
-                "resize": true
-            },
-            "modes": {
-                "grab": { "distance": 200, "line_linked": { "opacity": 0.6 } },
-                "push": { "particles_nb": 3 }
-            }
-        },
-        "retina_detect": true
-    });
-
-
-    // 5. GSAP Advanced Scroll Animations
+    /* ========================================================
+       5. GSAP SCROLL REVEAL ANIMATIONS
+       ======================================================== */
     gsap.registerPlugin(ScrollTrigger);
 
-    // Hero Section Load Animation
+    // Hero Timeline
     const heroTl = gsap.timeline();
     heroTl.from(".logo", { y: -50, opacity: 0, duration: 0.8, ease: "back.out(1.7)" })
           .from(".nav-links li", { y: -50, opacity: 0, duration: 0.6, stagger: 0.1, ease: "back.out(1.7)" }, "-=0.6")
@@ -170,56 +218,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dynamic Section Titles
     gsap.utils.toArray('.section-title').forEach(title => {
         gsap.from(title, {
-            scrollTrigger: {
-                trigger: title,
-                start: "top 85%",
-                toggleActions: "play none none reverse"
-            },
-            y: 40,
-            opacity: 0,
-            duration: 0.8,
-            ease: "power3.out"
+            scrollTrigger: { trigger: title, start: "top 85%", toggleActions: "play none none reverse" },
+            y: 40, opacity: 0, duration: 0.8, ease: "power3.out"
         });
     });
 
-    // About Section Glass Reveal
+    // Glass Card Reveals
     gsap.from(".about-text", {
-        scrollTrigger: {
-            trigger: "#about",
-            start: "top 75%",
-        },
-        y: 60,
-        opacity: 0,
-        scale: 0.95,
-        duration: 1,
-        ease: "power4.out"
+        scrollTrigger: { trigger: "#about", start: "top 75%" },
+        y: 60, opacity: 0, scale: 0.95, duration: 1, ease: "power4.out"
     });
 
-    // Skills Staggered 3D Reveal
     gsap.from(".skill-category", {
-        scrollTrigger: {
-            trigger: "#skills",
-            start: "top 75%"
-        },
-        y: 80,
-        opacity: 0,
-        rotationX: -15, // Adds a cool folding effect
-        duration: 1,
-        stagger: 0.2,
-        ease: "back.out(1.5)"
+        scrollTrigger: { trigger: "#skills", start: "top 75%" },
+        y: 80, opacity: 0, rotationX: -15, duration: 1, stagger: 0.2, ease: "back.out(1.5)"
     });
 
-    // Projects Staggered 3D Reveal
     gsap.from(".project-card", {
-        scrollTrigger: {
-            trigger: "#projects",
-            start: "top 75%"
-        },
-        y: 100,
-        opacity: 0,
-        duration: 1,
-        stagger: 0.2,
-        ease: "power4.out"
+        scrollTrigger: { trigger: "#projects", start: "top 75%" },
+        y: 100, opacity: 0, duration: 1, stagger: 0.2, ease: "power4.out"
     });
 
 });
